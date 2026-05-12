@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>V&D Hill Climb</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        canvas { display: block; }
+        #ui { position: fixed; top: 20px; left: 20px; color: yellow; font-family: sans-serif; font-size: 20px; pointer-events: none; }
+        #gas-btn { position: fixed; bottom: 30px; right: 30px; width: 80px; height: 80px; background: rgba(255,255,0,0.5); border-radius: 50%; border: 2px solid yellow; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">XAL: <span id="dist">0</span>m</div>
+    <div id="gas-btn"></div>
+
+    <script>
+        const { Engine, Render, Runner, Bodies, Composite, Constraint, Body } = Matter;
+        const engine = Engine.create();
+        const render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: { width: window.innerWidth, height: window.innerHeight, wireframes: false, background: '#111' }
+        });
+
+        // Maşın Yaradılması (Karvan stili)
+        const carBody = Bodies.rectangle(100, 300, 100, 40, { collisionFilter: { group: -1 }, render: { fillStyle: 'yellow' } });
+        const wheelA = Bodies.circle(60, 330, 15, { collisionFilter: { group: -1 }, friction: 0.8 });
+        const wheelB = Bodies.circle(140, 330, 15, { collisionFilter: { group: -1 }, friction: 0.8 });
+
+        const axleA = Constraint.create({ bodyA: carBody, pointB: { x: -40, y: 25 }, bodyB: wheelA, stiffness: 0.3, length: 5 });
+        const axleB = Constraint.create({ bodyA: carBody, pointB: { x: 40, y: 25 }, bodyB: wheelB, stiffness: 0.3, length: 5 });
+
+        // Yol (Təpəliklər)
+        const ground = Bodies.rectangle(400, 600, 2000, 60, { isStatic: true, render: { fillStyle: '#333' } });
+        
+        Composite.add(engine.world, [carBody, wheelA, wheelB, axleA, axleB, ground]);
+
+        // Qaz vermək mexanizmi
+        let isGassing = false;
+        document.getElementById('gas-btn').ontouchstart = () => isGassing = true;
+        document.getElementById('gas-btn').ontouchend = () => isGassing = false;
+
+        Matter.Events.on(engine, 'beforeUpdate', () => {
+            if (isGassing) {
+                Body.setAngularVelocity(wheelA, 0.2);
+                Body.setAngularVelocity(wheelB, 0.2);
+            }
+            // Kameranı maşına bağla
+            render.bounds.min.x = carBody.position.x - 200;
+            render.bounds.max.x = carBody.position.x + 600;
+            document.getElementById('dist').innerText = Math.floor(carBody.position.x / 10);
+        });
+
+        Render.run(render);
+        Runner.run(Runner.create(), engine);
+    </script>
+</body>
+</html>
